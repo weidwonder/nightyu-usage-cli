@@ -1,0 +1,7 @@
+baseUrl: "https://api.nightyu.com"
+
+keys:
+  - alias: "工作Key"
+    key: "sk-your-work-key"
+  - alias: "个人Key"
+    key: "sk-your-personal-key"

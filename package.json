@@ -1,0 +1,34 @@
+{
+  "name": "nightyu-usage-cli",
+  "version": "0.1.0",
+  "description": "读取多个 nightyu / Claude Code Hub API key 配额用量的 Node.js CLI",
+  "type": "module",
+  "bin": {
+    "nightyu-usage": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "cli",
+    "nightyu",
+    "claude-code-hub",
+    "typescript"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^12.1.0",
+    "yaml": "^2.5.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.29",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}
