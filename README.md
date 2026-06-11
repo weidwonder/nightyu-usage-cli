@@ -1,59 +1,19 @@
 # nightyu-usage-cli
 
-一个 Node.js + TypeScript CLI，用于从本地配置文件读取多个 `{ alias, key }`，并输出每个别名对应的：
-
-- 日额度用量
-- 总额度用量
-
-这两个值对齐 `https://api.nightyu.com/zh-CN/my-usage` 页面里的“用户配额使用区域”。
-
-## 本次真实验证结论
-
-我已使用用户提供的测试 key 仅做本地调试验证，且未写入仓库文件。
-
-已确认：
-
-- `POST /api/actions/users/getUsers` 可直接用 `Authorization: Bearer <key>` 调通
-- `POST /api/actions/users/getUserLimitUsage` 可获取用户当日额度用量
-- `GET /api/v1/me/quota` 可返回完整的用户/Key 配额快照
-- `GET /api/v1/users/{id}/limit-usage:all` 可直接返回：
-  - `limitDaily.usage / limitDaily.limit`
-  - `limitTotal.usage / limitTotal.limit`
-
-对测试 key 来说，更稳定且最贴近网页“用户配额使用区域”的路径是：
-
-1. `getUsers` → 获取 `userId`
-2. `GET /api/v1/users/{id}/limit-usage:all` → 读取日额度/总额度
-3. 如该接口不可用，再回退 `GET /api/v1/me/quota`
-
-同时也确认：
-
-- `POST /api/actions/keys/getKeyLimitUsage`
-- `GET /api/v1/keys/{keyId}/limit-usage`
-
-对这个测试 key 会返回 `401`，因此不能把“总额度”主路径建立在 key 级限额接口上。
+一个 Node.js + TypeScript CLI，用于从本地配置文件读取多个 nightyu / Claude Code Hub API key，批量查询并展示每个 key 的日额度与总额度用量。同时支持快速切换 Claude Code / Codex 的本地凭据。
 
 ## 安装
 
-要求：
-
-- Node.js `>= 18`
-
-安装依赖：
+要求 Node.js >= 18。
 
 ```bash
 npm install
-```
-
-构建：
-
-```bash
 npm run build
 ```
 
 ## 配置
 
-配置文件查找顺序：
+配置文件按以下顺序查找（命中即停）：
 
 1. `--config` 显式指定
 2. `./nightyu-usage.yaml`
@@ -61,65 +21,44 @@ npm run build
 4. `~/.config/nightyu-usage/config.yaml`
 5. `~/.config/nightyu-usage/config.yml`
 
-示例配置：
+示例配置（见 `nightyu-usage.example.yaml`）：
 
 ```yaml
 baseUrl: "https://api.nightyu.com"
 
 keys:
   - alias: "工作Key"
-    key: "sk-your-first-key"
+    key: "sk-your-work-key"
   - alias: "个人Key"
-    key: "sk-your-second-key"
+    key: "sk-your-personal-key"
 ```
 
-说明：
-
-- 配置项名为 `key`
-- 当前实现也兼容旧字段 `token`，但 README 与示例统一以 `key` 为准
-- 不要把真实 key 提交到仓库
+> 配置项名为 `key`，也兼容旧字段 `token`。请勿将真实 key 提交到仓库。
 
 ## 用法
 
-开发运行：
-
 ```bash
-npm run dev -- --help
-```
-
-直接运行：
-
-```bash
+# 开发运行
 npm run dev
-```
 
-构建后运行：
-
-```bash
+# 构建后运行
 node dist/index.js
+
+# 或全局安装后
+nightyu-usage
 ```
 
-常用参数：
+### 查询用量（默认行为）
 
 ```bash
-nightyu-usage --config ./nightyu-usage.yaml
-nightyu-usage --alias 工作Key
-nightyu-usage -l
-nightyu-usage -cc 工作Key
-nightyu-usage -cx 工作Key
-nightyu-usage --json
-nightyu-usage --timeout 8000
+nightyu-usage                          # 查询所有 key 的用量
+nightyu-usage --alias 工作Key          # 仅查询指定 alias
+nightyu-usage --alias 工作Key 个人Key  # 查询多个 alias
+nightyu-usage --json                   # 以 JSON 格式输出
+nightyu-usage --timeout 8000           # 自定义请求超时（默认 5000ms）
 ```
 
-其中：
-
-- `-l` 等同于直接输出当前命中的配置文件内容
-- `-cc <key或alias>` 会把 `~/.claude/settings.json` 里的 `ANTHROPIC_AUTH_TOKEN` 切到配置中对应的 key
-- `-cx <key或alias>` 会把 `~/.codex/auth.json` 里的 `OPENAI_API_KEY` 切到配置中对应的 key
-
-## 输出
-
-表格输出：
+输出示例：
 
 ```text
 nightyu-usage v0.1.0
@@ -132,73 +71,62 @@ nightyu-usage v0.1.0
 更新时间: 2026-06-02 11:00:00
 ```
 
-JSON 输出会包含：
+### 查看配置
 
-- `alias`
-- `userName`
-- `keyName`
-- `dailyUsed`
-- `dailyLimit`
-- `totalUsed`
-- `totalLimit`
-- `dataSource`
+```bash
+nightyu-usage -l                       # 输出当前命中的配置文件内容
+```
+
+### 切换 Claude Code 凭据
+
+将 `~/.claude/settings.json` 中的 `ANTHROPIC_AUTH_TOKEN` 切换为配置中对应的 key：
+
+```bash
+nightyu-usage -cc 工作Key              # 按 alias 切换
+nightyu-usage -cc sk-your-work-key     # 按 key 值切换
+```
+
+### 切换 Codex 凭据
+
+将 `~/.codex/auth.json` 中的 `OPENAI_API_KEY` 切换为配置中对应的 key：
+
+```bash
+nightyu-usage -cx 工作Key              # 按 alias 切换
+nightyu-usage -cx sk-your-work-key     # 按 key 值切换
+```
+
+> `-l`、`-cc`、`-cx` 三者互斥，不能同时使用。
+
+### 完整参数
+
+| 参数 | 短写 | 说明 |
+|------|------|------|
+| `--config <path>` | `-c` | 指定配置文件路径 |
+| `--alias <alias...>` | `-a` | 仅查询指定 alias（可多个） |
+| `--list-config` | `-l` | 输出当前配置文件内容 |
+| `--claude-key <keyOrAlias>` | `-cc` | 切换 Claude Code 凭据 |
+| `--codex-key <keyOrAlias>` | `-cx` | 切换 Codex 凭据 |
+| `--json` | | 以 JSON 格式输出 |
+| `--timeout <ms>` | | 单次请求超时毫秒数（默认 5000） |
 
 ## 实现策略
 
-对每个配置项：
+对每个 key，按优先级依次尝试以下接口获取用量数据：
 
-1. 调用 `POST /api/actions/users/getUsers`，请求体 `{ "includeUsage": true }`
-2. 用 key 掩码匹配当前 key，拿到 `userId`
-3. 优先调用 `GET /api/v1/users/{id}/limit-usage:all`
-4. 若失败，则回退调用 `GET /api/v1/me/quota`
-5. 若仍失败，则回退 `POST /api/actions/users/getUserLimitUsage`
+1. `GET /api/v1/users/{id}/limit-usage:all` — 最贴近网页"用户配额使用区域"
+2. `GET /api/v1/me/quota` — 回退方案
+3. `POST /api/actions/users/getUserLimitUsage` — 最终回退，仅能获取日额度
 
-说明：
+认证方式优先使用 `Authorization: Bearer <key>`，失败后回退 `Cookie: auth-token=<key>`。
 
-- 第 3 步最贴近网页“用户配额使用区域”
-- 第 5 步只能稳定拿到“日额度用量”，拿不到“总额度已用”时会退化输出
-
-认证策略：
-
-- 优先 `Authorization: Bearer <key>`
-- 若失败，再尝试 `Cookie: auth-token=<key>`
-
-## 验证命令
+## 开发
 
 ```bash
-npm run typecheck
-npm run build
-npm run dev -- --help
+npm run dev           # 使用 tsx 直接运行
+npm run typecheck     # 类型检查
+npm run build         # 编译到 dist/
 ```
 
-若你已经在本地创建配置文件：
+## License
 
-```bash
-npm run dev -- --config ./nightyu-usage.yaml
-```
-
-## 调试说明
-
-可用以下命令单独验证接口：
-
-```bash
-curl -X POST https://api.nightyu.com/api/actions/users/getUsers \
-  -H "Authorization: Bearer <YOUR_KEY>" \
-  -H "Content-Type: application/json" \
-  -d '{"includeUsage": true}'
-```
-
-```bash
-curl https://api.nightyu.com/api/v1/me/quota \
-  -H "Authorization: Bearer <YOUR_KEY>"
-```
-
-```bash
-curl https://api.nightyu.com/api/v1/users/<USER_ID>/limit-usage:all \
-  -H "Authorization: Bearer <YOUR_KEY>"
-```
-
-## 本次加载的规则 / 技能
-
-- 未发现仓库内 `.claude/rules/`
-- 已加载技能：`code-security`、`native-data-fetching`
+MIT
